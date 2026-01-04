@@ -7,6 +7,10 @@ export interface AuthRepository {
   getRefreshTokenByToken: (refreshToken: string) => Promise<any>;
   deleteRefreshToken: (refreshToken: string) => Promise<void>;
   deleteRefreshTokenById: (accountId: string) => Promise<void>;
+  updateOtp: (accountId: string, otp: string, expiresAt: Date, attempts: number) => Promise<any>;
+  getOtp: (accountId: string) => Promise<any>;
+  deleteOtp: (accountId: string) => Promise<void>;
+  updateVerification: (accountId: string, verification: boolean) => Promise<any>;
   // getAll: () => Promise<any[]>;
   // getById: (id: string) => Promise<any>;
   // updateById: (id: string, authData: any) => Promise<any>;

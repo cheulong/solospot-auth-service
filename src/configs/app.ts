@@ -10,6 +10,7 @@ import { notFound } from "../api/v1/middleware/notFound.middleware";
 import { createAuthService } from "../api/v1/services/auth.service";
 import { setCache } from "../api/v1/middleware/cache.middleware";
 import swaggerDocs from "../utils/swagger";
+import { rateLimit } from 'express-rate-limit'
 
 
 
@@ -24,6 +25,20 @@ export default function (db: any, port: number) {
       origin: "*",
     })
   );
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    legacyHeaders: false,
+    message: "Too many requests from this IP, please try again after 15 minutes"
+  })
+
+  const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    legacyHeaders: false,
+    message: "Too many requests from this IP, please try again after 15 minutes"
+  })
 
 /**
  * @openapi
@@ -40,8 +55,10 @@ export default function (db: any, port: number) {
     res.status(200).send("Place server is healthy.");
   });
 
+  app.use("/auth/v1/send-verification",otpLimiter);
+  app.use(authLimiter);
+  
   const authService = createAuthService(db);
-
   app.use("/auth/v1", createAuthRouter({ authService }));
 
   swaggerDocs(app, port);

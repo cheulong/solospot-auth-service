@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { authTable, refreshTokenTable } from "../db/schema/auth.schema";
+import { authTable, refreshTokenTable, verificationTable } from "../db/schema/auth.schema";
 import type { AuthRepository } from "./auth.repository.type";
 import { PgTimestamp } from "drizzle-orm/pg-core";
 
@@ -68,6 +68,50 @@ export const createAuthRepository = (db: any): AuthRepository => ({
       .delete(refreshTokenTable)
       .where(eq(refreshTokenTable.accountId, accountId));
   },
+  updateOtp: async (accountId: string, otp: string, expiresAt: Date, attempts: number) => {
+    const existingToken = await db
+      .select()
+      .from(verificationTable)
+      .where(eq(verificationTable.accountId, accountId));
+
+    if (existingToken.length > 0) {
+      const [updatedAuth] = await db
+        .update(verificationTable)
+        .set({ otp, accountId, expiresAt, attempts })
+        .where(eq(verificationTable.accountId, accountId))
+        .returning();
+      return updatedAuth;
+    } else {
+      const [newToken] = await db
+        .insert(verificationTable)
+        .values({ otp, accountId, expiresAt })
+        .returning();
+      return newToken;
+    }
+  },
+  getOtp: async (accountId: string) => {
+    const [otp] = await db
+      .select()
+      .from(verificationTable)
+      .where(eq(verificationTable.accountId, accountId));
+    return otp;
+  },
+  deleteOtp: async (accountId: string) => {
+    await db
+      .delete(verificationTable)
+      .where(eq(verificationTable.accountId, accountId));
+  },
+  updateVerification: async (accountId: string, emailVerified: boolean) => {
+    const [updatedAuth] = await db
+      .update(authTable)
+      .set({
+        emailVerified,
+        emailVerifiedAt: new Date()
+      })
+      .where(eq(authTable.id, accountId))
+      .returning();
+    return updatedAuth;
+  }
   // getAll: async () => {
   //   return db.select().from(placeTable);
   // },

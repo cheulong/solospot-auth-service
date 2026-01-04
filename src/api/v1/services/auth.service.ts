@@ -5,6 +5,10 @@ import jwt from "jsonwebtoken";
 import { decodeToken, generateRefreshToken, generateToken, verifyRefreshToken } from "../../../../security/jwt";
 import { DateTime } from "luxon";
 import { HttpError } from "../../../errors/HttpError";
+import { generateOtp, otpExpiresIn } from "../../../utils/otp";
+import { mailer } from "../../../utils/mailer";
+
+const OTP_MAX_ATTEMPTS = 5;
 
 export const createAuthService = (db: any): AuthService => {
   const authRepo = createAuthRepository(db);
@@ -104,8 +108,51 @@ export const createAuthService = (db: any): AuthService => {
       // Delete all refresh tokens for the account
       await authRepo.deleteRefreshTokenById(accountId)
       return { message: "Password changed successfully" };
+    },
+    sendVerification: async (accountId: string) => {
+      const account = await authRepo.getById(accountId);
+      if (!account) {
+        throw new Error("Account not found");
+      }
+      const otp = generateOtp();
+      const expiresAt = otpExpiresIn();
+      await authRepo.updateOtp(accountId, otp, expiresAt, 0);
+      try {
+        await mailer.sendMail({
+          from: `Solo Spot App<no-reply@cheulongsear.dev>`,
+          to: account.email,
+          subject: "Your verification code",
+          html: `<p>Your OTP is <b>${otp}</b>. It expires in 15 minutes.</p>`,
+        })
+      } catch (err) {
+        throw new Error("Failed to send OTP email");
+      }
+      return { message: "Verification email sent successfully", otp, email: account.email };
+    },
+    verifyOtp: async (accountId: string, otp: string, emailVerified: boolean) => {
+      const storedOtp = await authRepo.getOtp(accountId);
+      if (!storedOtp) {
+        throw new HttpError("OTP not found", 404);
+      }
+      if (storedOtp.expiresAt < new Date()) {
+        await authRepo.deleteOtp(accountId);
+        throw new HttpError("OTP has expired", 401);
+      }
+      if (storedOtp.attempts >= OTP_MAX_ATTEMPTS) {
+        await authRepo.deleteOtp(accountId);
+        throw new HttpError("OTP has been used too many times", 429);
+      }
+      if (storedOtp.otp !== otp) {
+        storedOtp.attempts++;
+        await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts);
+        throw new HttpError("Invalid OTP", 401);
+      }
+      if (emailVerified) {
+        await authRepo.updateVerification(accountId, true);
+      }
+      await authRepo.deleteOtp(accountId);
+      return { message: "OTP verified successfully" };
     }
-
     // getAllPlaces: async () => {
     //   return placeRepo.getAll();
     // },

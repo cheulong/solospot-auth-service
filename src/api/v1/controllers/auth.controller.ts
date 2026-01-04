@@ -28,8 +28,8 @@ export const createAuthController = (authService: AuthService) => ({
       return res.status(401).json({ message: "Invalid email or password" });
     }
     const { email: accountEmail, accessToken, refreshToken } = account;
-    res.cookie("refreshToken", refreshToken, { 
-      httpOnly: true, 
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
       secure: true, // Use secure cookies in production
       sameSite: "none",  // Allow cross-site requests for refresh token
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -52,7 +52,7 @@ export const createAuthController = (authService: AuthService) => ({
   },
 
   logout: async (req: any, res: any) => {
-      const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
     if (refreshToken) {
       await authService.deleteRefreshToken(refreshToken);
       console.log("Refresh token deleted");
@@ -69,11 +69,42 @@ export const createAuthController = (authService: AuthService) => ({
   },
 
   changePassword: async (req: any, res: any) => {
-    const accountId = req.account.accountId;
+    const accountId = req.account?.accountId;
+    if (!accountId) {
+      return res.status(401).json({ message: "Account ID is required" });
+    }
     const { oldPassword, newPassword } = req.body;
     await authService.changePassword(accountId, oldPassword, newPassword);
     res.status(200).json({ message: "Password changed successfully" });
   },
+
+  sendVerification: async (req: any, res: any) => {
+    const accountId = req.account?.accountId;
+    if (!accountId) {
+      return res.status(401).json({ message: "Account ID is required" });
+    }
+    const result = await authService.sendVerification(accountId);
+    res.status(200).json(result);
+  },
+
+  verifyEmail: async (req: any, res: any) => {
+    const accountId = req.account?.accountId;
+    if (!accountId) {
+      return res.status(401).json({ message: "Account ID is required" });
+    }
+    const { otp } = req.body;
+    await authService.verifyOtp(accountId, otp, true);
+    res.status(200).json({ message: "OTP verified successfully" });
+  },
+  verifyOtp: async (req: any, res: any) => {
+    const accountId = req.account?.accountId;
+    if (!accountId) {
+      return res.status(401).json({ message: "Account ID is required" });
+    }
+    const { otp } = req.body;
+    await authService.verifyOtp(accountId, otp, false);
+    res.status(200).json({ message: "OTP verified successfully" });
+  }
   // // @desc Get all places
   // // @route GET /places
   // getPlaces: async (req: any, res: any) => {

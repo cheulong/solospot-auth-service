@@ -1,6 +1,8 @@
 import {
+  boolean,
   date,
   index,
+  integer,
   pgTable,
   timestamp,
   uuid,
@@ -31,6 +33,7 @@ export const authTable = pgTable("auth", {
   email: varchar("email", { length: 255 }).unique().notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   emailVerifiedAt: timestamp("email_verified_at"),
+  emailVerified: boolean("email_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   role: varchar("role", { length: 50 }).default("user").notNull(),
 });
@@ -48,6 +51,18 @@ export const refreshTokenTable = pgTable("refresh_tokens", {
   index("idx_refresh_token_user_id").on(table.accountId),
   index("idx_refresh_token_hash").on(table.tokenHash),
 ]);
+
+export const verificationTable = pgTable("verification", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => authTable.id, { onDelete: "cascade" }),
+  otp: varchar("otp", { length: 500 }).notNull(),
+  identifier: varchar("identifier", { length: 100 }).default("email").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  attempts: integer("attempts").default(0),
+});
 
 /**
  * @openapi

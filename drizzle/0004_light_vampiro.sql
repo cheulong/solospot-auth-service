@@ -1,0 +1,1 @@
+ALTER TABLE "verification" ADD COLUMN "attempts" integer DEFAULT 0;
