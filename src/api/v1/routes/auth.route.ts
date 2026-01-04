@@ -18,6 +18,7 @@ export const createAuthRouter = ({ authService }: { authService: any }) => {
 
     router.route("/logout").post(authenticate, asyncHandler(controller.logout));
 
+    router.route("/change-password").post(authenticate, asyncHandler(controller.changePassword));
     // router.post("/password-reset", (req: express.Request, res: express.Response) => {
     //     res.json({ message: "Password reset endpoint" });
     // });

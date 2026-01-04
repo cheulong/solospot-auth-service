@@ -4,6 +4,7 @@ export interface AuthService {
   login: (email: string, password: string) => Promise<any>;
   refreshToken: (refreshToken: string) => Promise<any>;
   deleteRefreshToken: (refreshToken: string) => Promise<void>;
+  changePassword: (accountId: string, oldPassword: string, newPassword: string) => Promise<any>;
   // getAllPlaces: () => Promise<any[]>;
   // createPlace: (placeData: any) => Promise<any>;
   // getPlaceById: (id: string) => Promise<any>;

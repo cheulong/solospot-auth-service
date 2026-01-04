@@ -67,6 +67,13 @@ export const createAuthController = (authService: AuthService) => ({
     });
     res.status(200).json({ message: "Logout successful" });
   },
+
+  changePassword: async (req: any, res: any) => {
+    const accountId = req.account.accountId;
+    const { oldPassword, newPassword } = req.body;
+    await authService.changePassword(accountId, oldPassword, newPassword);
+    res.status(200).json({ message: "Password changed successfully" });
+  },
   // // @desc Get all places
   // // @route GET /places
   // getPlaces: async (req: any, res: any) => {

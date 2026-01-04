@@ -15,12 +15,27 @@ export const createAuthRepository = (db: any): AuthRepository => ({
       .where(eq(authTable.email, email));
     return auth;
   },
+  getById: async (id: string) => {
+    const [auth] = await db
+      .select()
+      .from(authTable)
+      .where(eq(authTable.id, id));
+    return auth;
+  },
+  updatePasswordById: async (accountId: string, newPassword: string) => {
+    const [updatedAuth] = await db
+      .update(authTable)
+      .set({ passwordHash: newPassword })
+      .where(eq(authTable.id, accountId))
+      .returning();
+    return updatedAuth;
+  },
   saveRefreshToken: async (authId: string, refreshToken: string, expiresAt: Date) => {
     const existingToken = await db
       .select()
       .from(refreshTokenTable)
       .where(eq(refreshTokenTable.accountId, authId));
-    
+
     if (existingToken.length > 0) {
       const [updatedAuth] = await db
         .update(refreshTokenTable)
@@ -47,6 +62,11 @@ export const createAuthRepository = (db: any): AuthRepository => ({
     await db
       .delete(refreshTokenTable)
       .where(eq(refreshTokenTable.tokenHash, refreshToken));
+  },
+  deleteRefreshTokenById: async (accountId: string) => {
+    await db
+      .delete(refreshTokenTable)
+      .where(eq(refreshTokenTable.accountId, accountId));
   },
   // getAll: async () => {
   //   return db.select().from(placeTable);

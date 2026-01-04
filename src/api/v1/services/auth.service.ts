@@ -1,9 +1,10 @@
 import type { AuthService } from "./auth.type";
 import { createAuthRepository } from "../repositories/auth.repository";
-import { hashPassword, verifyPassword } from "../../../utils/hash";
+import { hashPassword, verifyPassword } from "../../../../security/hash";
 import jwt from "jsonwebtoken";
-import { decodeToken, generateRefreshToken, generateToken, verifyRefreshToken } from "../../../utils/jwt";
+import { decodeToken, generateRefreshToken, generateToken, verifyRefreshToken } from "../../../../security/jwt";
 import { DateTime } from "luxon";
+import { HttpError } from "../../../errors/HttpError";
 
 export const createAuthService = (db: any): AuthService => {
   const authRepo = createAuthRepository(db);
@@ -22,11 +23,11 @@ export const createAuthService = (db: any): AuthService => {
     login: async (email: string, password: string) => {
       const account = await authRepo.getByEmail(email);
       if (!account) {
-        throw new Error("Account not found");
+        throw new HttpError("Account not found", 404);
       }
       const isValid = await verifyPassword(password, account.passwordHash);
       if (!isValid) {
-        throw new Error("Invalid password");
+        throw new HttpError("Invalid password", 401);
       }
       const refreshToken = generateRefreshToken({
         accountId: account.id,
@@ -89,6 +90,21 @@ export const createAuthService = (db: any): AuthService => {
     deleteRefreshToken: async (refreshToken: string) => {
       await authRepo.deleteRefreshToken(refreshToken);
     },
+    changePassword: async (accountId: string, oldPassword: string, newPassword: string) => {
+      const account = await authRepo.getById(accountId);
+      if (!account) {
+        throw new Error("Account not found");
+      }
+      const isValid = await verifyPassword(oldPassword, account.passwordHash);
+      if (!isValid) {
+        throw new Error("Invalid password");
+      }
+      const hashedPassword = await hashPassword(newPassword);
+      await authRepo.updatePasswordById(accountId, hashedPassword);
+      // Delete all refresh tokens for the account
+      await authRepo.deleteRefreshTokenById(accountId)
+      return { message: "Password changed successfully" };
+    }
 
     // getAllPlaces: async () => {
     //   return placeRepo.getAll();
