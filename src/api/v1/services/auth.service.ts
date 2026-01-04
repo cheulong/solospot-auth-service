@@ -1,6 +1,6 @@
 import type { AuthService } from "./auth.type";
 import { createAuthRepository } from "../repositories/auth.repository";
-import { hashPassword, verifyPassword } from "../../../../security/hash";
+import { hashString, verifyString } from "../../../../security/hash";
 import jwt from "jsonwebtoken";
 import { decodeToken, generateRefreshToken, generateToken, verifyRefreshToken } from "../../../../security/jwt";
 import { DateTime } from "luxon";
@@ -14,7 +14,7 @@ export const createAuthService = (db: any): AuthService => {
   const authRepo = createAuthRepository(db);
   return {
     createAccount: async (authData: any) => {
-      const hashedPassword = await hashPassword(authData.password);
+      const hashedPassword = await hashString(authData.password);
 
       return authRepo.create({
         email: authData.email,
@@ -29,7 +29,7 @@ export const createAuthService = (db: any): AuthService => {
       if (!account) {
         throw new HttpError("Account not found", 404);
       }
-      const isValid = await verifyPassword(password, account.passwordHash);
+      const isValid = await verifyString(password, account.passwordHash);
       if (!isValid) {
         throw new HttpError("Invalid password", 401);
       }
@@ -99,11 +99,11 @@ export const createAuthService = (db: any): AuthService => {
       if (!account) {
         throw new Error("Account not found");
       }
-      const isValid = await verifyPassword(oldPassword, account.passwordHash);
+      const isValid = await verifyString(oldPassword, account.passwordHash);
       if (!isValid) {
         throw new Error("Invalid password");
       }
-      const hashedPassword = await hashPassword(newPassword);
+      const hashedPassword = await hashString(newPassword);
       await authRepo.updatePasswordById(accountId, hashedPassword);
       // Delete all refresh tokens for the account
       await authRepo.deleteRefreshTokenById(accountId)
@@ -115,8 +115,9 @@ export const createAuthService = (db: any): AuthService => {
         throw new Error("Account not found");
       }
       const otp = generateOtp();
+      const hashedOtp = await hashString(otp);
       const expiresAt = otpExpiresIn();
-      await authRepo.updateOtp(accountId, otp, expiresAt, 0);
+      await authRepo.updateOtp(accountId, hashedOtp, expiresAt, 0);
       try {
         await mailer.sendMail({
           from: `Solo Spot App<no-reply@cheulongsear.dev>`,
@@ -142,7 +143,8 @@ export const createAuthService = (db: any): AuthService => {
         await authRepo.deleteOtp(accountId);
         throw new HttpError("OTP has been used too many times", 429);
       }
-      if (storedOtp.otp !== otp) {
+      const isValid = await verifyString(otp, storedOtp.otp);
+      if (!isValid) {
         storedOtp.attempts++;
         await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts);
         throw new HttpError("Invalid OTP", 401);
