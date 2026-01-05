@@ -113,6 +113,52 @@ export const createAuthService = (db: any): AuthService => {
       await authRepo.deleteRefreshTokenById(accountId)
       return { message: "Password changed successfully" };
     },
+    forgotPassword: async (email: string) => {
+      const account = await authRepo.getByEmail(email);
+      if (!account) {
+        throw new HttpError("Account not found", 404);
+      }
+      const otp = generateOtp();
+      const hashedOtp = await hashString(otp);
+      const expiresAt = otpExpiresIn();
+      await authRepo.updateOtp(account.id, hashedOtp, expiresAt, 0, "password_reset");
+      try {
+        await mailer.sendMail({
+          from: `Solo Spot App<no-reply@cheulongsear.dev>`,
+          to: account.email,
+          subject: "Password Reset OTP",
+          html: `<p>Your OTP for password reset is <b>${otp}</b>. It expires in 15 minutes.</p>`,
+        });
+      } catch (error) {
+        console.error("Failed to send verification email:", error);
+        throw new HttpError("Failed to send verification email", 500);
+      }
+      return { message: "OTP sent successfully", otp, account};
+    },
+    resetPassword: async (accountId: string, otp: string, newPassword: string) => {
+      const storedOtp = await authRepo.getOtp(accountId);
+      if (!storedOtp) {
+        throw new HttpError("OTP not found", 404);
+      }
+      if (storedOtp.expiresAt < new Date()) {
+        await authRepo.deleteOtp(accountId);
+        throw new HttpError("OTP has expired", 401);
+      }
+      if (storedOtp.attempts >= OTP_MAX_ATTEMPTS) {
+        await authRepo.deleteOtp(accountId);
+        throw new HttpError("OTP has been used too many times", 429);
+      }
+      const isValid = await verifyString(otp, storedOtp.otp);
+      if (!isValid) {
+        storedOtp.attempts++;
+        await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts, "password_reset");
+        throw new HttpError("Invalid OTP", 401);
+      }
+      const hashedPassword = await hashString(newPassword);
+      await authRepo.updatePasswordById(accountId, hashedPassword);
+      await authRepo.deleteOtp(accountId);
+      return { message: "Password reset successfully" };
+    },
     sendVerification: async (accountId: string) => {
       const account = await authRepo.getById(accountId);
       if (!account) {
@@ -121,7 +167,7 @@ export const createAuthService = (db: any): AuthService => {
       const otp = generateOtp();
       const hashedOtp = await hashString(otp);
       const expiresAt = otpExpiresIn();
-      await authRepo.updateOtp(accountId, hashedOtp, expiresAt, 0);
+      await authRepo.updateOtp(accountId, hashedOtp, expiresAt, 0, "email_verification");
       try {
         await mailer.sendMail({
           from: `Solo Spot App<no-reply@cheulongsear.dev>`,
@@ -150,7 +196,7 @@ export const createAuthService = (db: any): AuthService => {
       const isValid = await verifyString(otp, storedOtp.otp);
       if (!isValid) {
         storedOtp.attempts++;
-        await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts);
+        await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts, "email_verification");
         throw new HttpError("Invalid OTP", 401);
       }
       if (emailVerified) {
@@ -248,8 +294,8 @@ export const createAuthService = (db: any): AuthService => {
         email: account.email,
       });
       // In a real implementation, you would mark the recovery code as used
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: "Recovery code verified successfully",
         accessToken,
         refreshToken

@@ -1,0 +1,1 @@
+ALTER TABLE "verification" ADD COLUMN "reason" varchar(100);

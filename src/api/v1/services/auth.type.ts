@@ -5,6 +5,8 @@ export interface AuthService {
   refreshToken: (refreshToken: string) => Promise<any>;
   deleteRefreshToken: (refreshToken: string) => Promise<void>;
   changePassword: (accountId: string, oldPassword: string, newPassword: string) => Promise<any>;
+  forgotPassword: (email: string) => Promise<any>;
+  resetPassword: (accountId: string, otp: string, newPassword: string) => Promise<any>;
   sendVerification: (accountId: string) => Promise<any>;
   verifyOtp: (accountId: string, otp: string, emailVerified: boolean) => Promise<any>;
   setup2FA: (email: string) => Promise<any>;

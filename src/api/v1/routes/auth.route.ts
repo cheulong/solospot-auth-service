@@ -20,6 +20,10 @@ export const createAuthRouter = ({ authService }: { authService: any }) => {
 
     router.route("/change-password").post(authenticate, asyncHandler(controller.changePassword));
 
+    router.route("/forgot-password").post(asyncHandler(controller.forgotPassword));
+
+    router.route("/reset-password").post(asyncHandler(controller.resetPassword));
+
     router.route("/send-verification").post(authenticate, asyncHandler(controller.sendVerification));
     
     router.route("/verify-email").post(authenticate, asyncHandler(controller.verifyEmail));

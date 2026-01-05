@@ -66,6 +66,7 @@ export const verificationTable = pgTable("verification", {
     .references(() => authTable.id, { onDelete: "cascade" }),
   otp: varchar("otp", { length: 500 }).notNull(),
   identifier: varchar("identifier", { length: 100 }).default("email").notNull(),
+  reason: varchar("reason", { length: 100 }),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   attempts: integer("attempts").default(0),

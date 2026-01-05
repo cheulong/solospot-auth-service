@@ -78,6 +78,18 @@ export const createAuthController = (authService: AuthService) => ({
     res.status(200).json({ message: "Password changed successfully" });
   },
 
+  forgotPassword: async (req: any, res: any) => {
+    const { email } = req.body;
+    const result = await authService.forgotPassword(email);
+    res.status(200).json({ message: "Password reset link sent to your email", ...result });
+  },
+
+  resetPassword: async (req: any, res: any) => {
+    const { accountId, otp, newPassword } = req.body;
+    await authService.resetPassword(accountId, otp, newPassword);
+    res.status(200).json({ message: "Password reset successfully" });
+  },
+
   sendVerification: async (req: any, res: any) => {
     const accountId = req.account?.accountId;
     if (!accountId) {
