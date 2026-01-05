@@ -173,7 +173,7 @@ export const createAuthController = (authService: AuthService) => ({
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/auth/refresh",
     });
-    res.status(200).json(result);
+    res.redirect(`http://localhost:5000/dashboard`);
   },
   // // @desc Get all places
   // // @route GET /places
