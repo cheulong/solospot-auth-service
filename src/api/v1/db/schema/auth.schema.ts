@@ -1,9 +1,11 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
   index,
   integer,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -36,6 +38,11 @@ export const authTable = pgTable("auth", {
   emailVerified: boolean("email_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   role: varchar("role", { length: 50 }).default("user").notNull(),
+
+  // 2FA Fields
+  twoFactorSecret: varchar("two_factor_secret", { length: 255 }),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorBackupCodes: text("two_factor_backup_codes").array(), // JSON array of backup codes
 });
 
 export const refreshTokenTable = pgTable("refresh_tokens", {
@@ -97,6 +104,17 @@ export const createUserSchema = object({
     lastName: z.string({
       error: "Last name is required",
     }).min(1, "Last name is required")
+  }),
+});
+
+export const recoveryLoginSchema = object({
+  body: object({
+    email: z.string({
+      error: "Email is required",
+    }).email("Invalid email address"),
+    recoveryCode: z.string({
+      error: "Recovery code is required",
+    }).min(6, "Recovery code must be at least 6 characters long"),
   }),
 });
 

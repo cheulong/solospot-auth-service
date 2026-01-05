@@ -104,7 +104,33 @@ export const createAuthController = (authService: AuthService) => ({
     const { otp } = req.body;
     await authService.verifyOtp(accountId, otp, false);
     res.status(200).json({ message: "OTP verified successfully" });
-  }
+  },
+  setup2FA: async (req: any, res: any) => {
+    const email = req.account?.email;
+    if (!email) {
+      return res.status(401).json({ message: "Email is required" });
+    }
+    const result = await authService.setup2FA(email);
+    res.status(200).json(result);
+  },
+  verify2FA: async (req: any, res: any) => {
+    const email = req.account?.email;
+    if (!email) {
+      return res.status(401).json({ message: "Email is required" });
+    }
+    const { otp } = req.body;
+    await authService.verify2FA(email, otp);
+    res.status(200).json({ message: "2FA verified successfully" });
+  },
+  recoveryLogin: async (req: any, res: any) => {
+    const { email, recoveryCode } = req.body;
+    if (!email) {
+      return res.status(401).json({ message: "Email is required" });
+    }
+    const result = await authService.verifyAndUseRecoveryCode(email, recoveryCode);
+    res.status(200).json(result);
+  },
+  
   // // @desc Get all places
   // // @route GET /places
   // getPlaces: async (req: any, res: any) => {

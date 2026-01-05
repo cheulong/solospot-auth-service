@@ -11,6 +11,9 @@ export interface AuthRepository {
   getOtp: (accountId: string) => Promise<any>;
   deleteOtp: (accountId: string) => Promise<void>;
   updateVerification: (accountId: string, verification: boolean) => Promise<any>;
+  updateTwoFactorSecret: (email: string, twoFactorSecret: string) => Promise<any>;
+  updateTwoFactorVerified: (email: string, twoFactorEnabled: boolean) => Promise<any>;
+  saveRecoveryCodes: (email: string, recoveryCodes: string[]) => Promise<any>;
   // getAll: () => Promise<any[]>;
   // getById: (id: string) => Promise<any>;
   // updateById: (id: string, authData: any) => Promise<any>;

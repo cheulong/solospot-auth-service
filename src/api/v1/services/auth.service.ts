@@ -7,6 +7,10 @@ import { DateTime } from "luxon";
 import { HttpError } from "../../../errors/HttpError";
 import { generateOtp, otpExpiresIn } from "../../../utils/otp";
 import { mailer } from "../../../utils/mailer";
+import { authenticator } from "otplib";
+import QRCode from "qrcode";
+import { randomBytes } from 'node:crypto';
+import { decryptSecret, encryptSecret } from "../../../utils/crypto";
 
 const OTP_MAX_ATTEMPTS = 5;
 
@@ -154,7 +158,103 @@ export const createAuthService = (db: any): AuthService => {
       }
       await authRepo.deleteOtp(accountId);
       return { message: "OTP verified successfully" };
-    }
+    },
+    setup2FA: async (email: string) => {
+      const account = await authRepo.getByEmail(email);
+      if (account?.twoFactorSecret) {
+        throw new HttpError("2FA is already set up for this account", 400);
+      }
+      // Generate a unique secret for the user
+      const secret = authenticator.generateSecret();
+
+      // Create a URI for the authenticator app (Label: Issuer)
+      const otpauth = authenticator.keyuri(email, 'SoloSpot', secret);
+
+      // Generate 10 recovery codes
+      const recoveryCodes = Array.from({ length: 5 }, () =>
+        randomBytes(4).toString('hex') // e.g., 'a1b2c3d4'
+      );
+
+      // Store recovery codes in database for user
+      await authRepo.saveRecoveryCodes(email, recoveryCodes);
+
+      // Generate QR code as a Data URL to display on the frontend
+      const imageUrl = await QRCode.toDataURL(otpauth);
+      const encryptedSecret = encryptSecret(secret);
+      await authRepo.updateTwoFactorSecret(email, encryptedSecret);
+
+      return {
+        message: "2FA setup initiated",
+        email,
+        recoveryCodes,
+        secret, // User might need this for manual entry
+        qrcode: imageUrl
+      };
+    },
+    verify2FA: async (email: string, otp: string) => {
+      // Retrieve the secret from your database
+      const account = await authRepo.getByEmail(email);
+      console.log({ account });
+
+      const twoFactorSecret = account?.twoFactorSecret;
+      if (!account || !twoFactorSecret) {
+        throw new HttpError("2FA not set up for this user", 400);
+      }
+
+      const decryptedSecret = decryptSecret(twoFactorSecret);
+      const isValid = authenticator.check(otp, decryptedSecret);
+      if (!isValid) {
+        throw new HttpError("Invalid 2FA code", 400);
+      }
+
+
+
+      // Mark the user as 2FA enabled in your database
+      await authRepo.updateTwoFactorVerified(email, true);
+
+      return { success: true, message: "2FA enabled successfully" };
+    },
+    verifyAndUseRecoveryCode: async (email: string, recoveryCode: string) => {
+      const account = await authRepo.getByEmail(email);
+      if (!account || !account?.twoFactorSecret) {
+        throw new HttpError("2FA not enabled or user not found", 400);
+      }
+      let matchedIndex = -1;
+      for (let i = 0; i < account.twoFactorBackupCodes.length; i++) {
+        const isMatch = recoveryCode === account.twoFactorBackupCodes[i];
+        if (isMatch) {
+          matchedIndex = i;
+          break;
+        }
+      }
+      if (matchedIndex === -1) {
+        throw new HttpError("Invalid recovery code", 400);
+      }
+      account.twoFactorBackupCodes.splice(matchedIndex, 1);
+      await authRepo.saveRecoveryCodes(email, account.twoFactorBackupCodes);
+      const refreshToken = generateRefreshToken({
+        accountId: account.id,
+        email: account.email,
+        isRefresh: true
+      });
+      const decodedRefreshToken = decodeToken(refreshToken);
+      const { exp } = decodedRefreshToken as { exp: number };
+      const expDate = new Date(exp * 1000)
+
+      await authRepo.saveRefreshToken(account.id, refreshToken, expDate);
+
+      const accessToken = generateToken({
+        accountId: account.id,
+        email: account.email,
+      });
+      // In a real implementation, you would mark the recovery code as used
+      return { 
+        success: true, 
+        message: "Recovery code verified successfully",
+        accessToken,
+        refreshToken
+      };
+    },
     // getAllPlaces: async () => {
     //   return placeRepo.getAll();
     // },
@@ -178,3 +278,4 @@ export const createAuthService = (db: any): AuthService => {
     // },
   }
 };
+

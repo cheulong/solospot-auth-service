@@ -111,7 +111,31 @@ export const createAuthRepository = (db: any): AuthRepository => ({
       .where(eq(authTable.id, accountId))
       .returning();
     return updatedAuth;
-  }
+  },
+  updateTwoFactorSecret: async (email: string, twoFactorSecret: string) => {
+    const [updatedAuth] = await db
+      .update(authTable)
+      .set({ twoFactorSecret })
+      .where(eq(authTable.email, email))
+      .returning();
+    return updatedAuth;
+  },
+  updateTwoFactorVerified: async (email: string, twoFactorEnabled: boolean) => {
+    const [updatedAuth] = await db
+      .update(authTable)
+      .set({ twoFactorEnabled })
+      .where(eq(authTable.email, email))
+      .returning();
+    return updatedAuth;
+  },
+  saveRecoveryCodes: async (email: string, recoveryCodes: string[]) => {
+    const [updatedAuth] = await db
+      .update(authTable)
+      .set({ twoFactorBackupCodes: recoveryCodes })
+      .where(eq(authTable.email, email))
+      .returning();
+    return updatedAuth;
+  },
   // getAll: async () => {
   //   return db.select().from(placeTable);
   // },

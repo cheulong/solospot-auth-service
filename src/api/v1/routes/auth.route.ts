@@ -2,7 +2,7 @@ import express from "express";
 import { asyncHandler } from "../middleware/asyncHandler.middleware";
 import { createAuthController } from "../controllers/auth.controller";
 import { validate } from "../middleware/validate.middleware";
-import { createUserSchema } from "../db/schema/auth.schema";
+import { createUserSchema, recoveryLoginSchema } from "../db/schema/auth.schema";
 import { authenticate } from "../middleware/auth";
 
 export const createAuthRouter = ({ authService }: { authService: any }) => {
@@ -26,6 +26,13 @@ export const createAuthRouter = ({ authService }: { authService: any }) => {
 
     router.route("/verify-otp").post(authenticate, asyncHandler(controller.verifyOtp));
 
+    router.route("/2fa/setup").post(authenticate, asyncHandler(controller.setup2FA));
+
+    router.route("/2fa/verify").post(authenticate, asyncHandler(controller.verify2FA));
+
+    router.route("/2fa/recover").post(validate(recoveryLoginSchema), asyncHandler(controller.recoveryLogin));
+
+    
     // router.post("/password-reset", (req: express.Request, res: express.Response) => {
     //     res.json({ message: "Password reset endpoint" });
     // });

@@ -7,6 +7,9 @@ export interface AuthService {
   changePassword: (accountId: string, oldPassword: string, newPassword: string) => Promise<any>;
   sendVerification: (accountId: string) => Promise<any>;
   verifyOtp: (accountId: string, otp: string, emailVerified: boolean) => Promise<any>;
+  setup2FA: (email: string) => Promise<any>;
+  verify2FA: (email: string, otp: string) => Promise<any>;
+  verifyAndUseRecoveryCode: (email: string, recoveryCode: string) => Promise<any>;
   // getAllPlaces: () => Promise<any[]>;
   // createPlace: (placeData: any) => Promise<any>;
   // getPlaceById: (id: string) => Promise<any>;
