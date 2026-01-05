@@ -174,9 +174,9 @@ export const createAuthService = (db: any): AuthService => {
       const recoveryCodes = Array.from({ length: 5 }, () =>
         randomBytes(4).toString('hex') // e.g., 'a1b2c3d4'
       );
-
+      const encryptedRecoveryCodes = await Promise.all(recoveryCodes.map(code => hashString(code)));
       // Store recovery codes in database for user
-      await authRepo.saveRecoveryCodes(email, recoveryCodes);
+      await authRepo.saveRecoveryCodes(email, encryptedRecoveryCodes);
 
       // Generate QR code as a Data URL to display on the frontend
       const imageUrl = await QRCode.toDataURL(otpauth);
@@ -221,7 +221,7 @@ export const createAuthService = (db: any): AuthService => {
       }
       let matchedIndex = -1;
       for (let i = 0; i < account.twoFactorBackupCodes.length; i++) {
-        const isMatch = recoveryCode === account.twoFactorBackupCodes[i];
+        const isMatch = await verifyString(recoveryCode, account.twoFactorBackupCodes[i]);
         if (isMatch) {
           matchedIndex = i;
           break;
