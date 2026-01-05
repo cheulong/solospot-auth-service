@@ -140,9 +140,41 @@ export const createAuthController = (authService: AuthService) => ({
       return res.status(401).json({ message: "Email is required" });
     }
     const result = await authService.verifyAndUseRecoveryCode(email, recoveryCode);
+    const { refreshToken } = result;
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true, // Use secure cookies in production
+      sameSite: "none",  // Allow cross-site requests for refresh token
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/auth/refresh",
+    });
     res.status(200).json(result);
   },
-  
+  loginPasswordless: async (req: any, res: any) => {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    const result = await authService.loginPasswordless(email);
+    res.status(200).json(result);
+  },
+  loginCallback: async (req: any, res: any) => {
+    const { email, token } = req.query;
+    if (!email || !token) {
+      return res.status(400).json({ message: "Email and token are required" });
+    }
+    // Handle passwordless login callback - verify the token and issue JWT
+    const result = await authService.loginCallback(email as string, token as string);
+    const { refreshToken } = result;
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true, // Use secure cookies in production
+      sameSite: "none",  // Allow cross-site requests for refresh token
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/auth/refresh",
+    });
+    res.status(200).json(result);
+  },
   // // @desc Get all places
   // // @route GET /places
   // getPlaces: async (req: any, res: any) => {

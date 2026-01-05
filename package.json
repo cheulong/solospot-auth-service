@@ -13,6 +13,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
+    "@types/escape-html": "^1.0.4",
     "@types/express": "^5.0.6",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.10",
@@ -37,6 +38,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.0",
     "drizzle-zod": "^0.8.3",
+    "escape-html": "^1.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",

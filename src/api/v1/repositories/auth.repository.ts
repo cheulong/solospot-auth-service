@@ -68,7 +68,7 @@ export const createAuthRepository = (db: any): AuthRepository => ({
       .delete(refreshTokenTable)
       .where(eq(refreshTokenTable.accountId, accountId));
   },
-  updateOtp: async (accountId: string, otp: string, expiresAt: Date, attempts: number, reason: string) => {
+  updateOtp: async (accountId: string, identifier: string, otp: string, expiresAt: Date, attempts: number, reason: string) => {
     const existingToken = await db
       .select()
       .from(verificationTable)
@@ -77,14 +77,14 @@ export const createAuthRepository = (db: any): AuthRepository => ({
     if (existingToken.length > 0) {
       const [updatedAuth] = await db
         .update(verificationTable)
-        .set({ otp, accountId, expiresAt, attempts, reason })
+        .set({ otp, identifier, accountId, expiresAt, attempts, reason })
         .where(eq(verificationTable.accountId, accountId))
         .returning();
       return updatedAuth;
     } else {
       const [newToken] = await db
         .insert(verificationTable)
-        .values({ otp, accountId, expiresAt })
+        .values({ otp, identifier, accountId, expiresAt, attempts, reason })
         .returning();
       return newToken;
     }
@@ -94,6 +94,13 @@ export const createAuthRepository = (db: any): AuthRepository => ({
       .select()
       .from(verificationTable)
       .where(eq(verificationTable.accountId, accountId));
+    return otp;
+  },
+  getOtpByEmail: async (email: string) => {
+    const [otp] = await db
+      .select()
+      .from(verificationTable)
+      .where(eq(verificationTable.identifier, email));
     return otp;
   },
   deleteOtp: async (accountId: string) => {

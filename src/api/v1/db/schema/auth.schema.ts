@@ -11,6 +11,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import z, { object, string } from "zod";
+import escapeHtml from 'escape-html';
 
 /**
  * @openapi
@@ -97,14 +98,16 @@ export const verificationTable = pgTable("verification", {
  */
 export const createUserSchema = object({
   body: object({
-    email: z.string().email("Invalid email address"),
+    email: z.string().email("Invalid email address").trim().toLowerCase(),
     password: z.string().min(6, "Password must be at least 6 characters long"),
     firstName: z.string({
       error: "First name is required",
-    }).min(1, "First name is required"),
+    }).min(1, "First name is required")
+    .transform((val) => escapeHtml(val)),
     lastName: z.string({
       error: "Last name is required",
     }).min(1, "Last name is required")
+    .transform((val) => escapeHtml(val))
   }),
 });
 
@@ -112,7 +115,7 @@ export const recoveryLoginSchema = object({
   body: object({
     email: z.string({
       error: "Email is required",
-    }).email("Invalid email address"),
+    }).email("Invalid email address").trim().toLowerCase(),
     recoveryCode: z.string({
       error: "Recovery code is required",
     }).min(6, "Recovery code must be at least 6 characters long"),

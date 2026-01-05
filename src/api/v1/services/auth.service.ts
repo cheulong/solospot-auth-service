@@ -11,6 +11,7 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { randomBytes } from 'node:crypto';
 import { decryptSecret, encryptSecret } from "../../../utils/crypto";
+import argon2 from 'argon2';
 
 const OTP_MAX_ATTEMPTS = 5;
 
@@ -121,7 +122,7 @@ export const createAuthService = (db: any): AuthService => {
       const otp = generateOtp();
       const hashedOtp = await hashString(otp);
       const expiresAt = otpExpiresIn();
-      await authRepo.updateOtp(account.id, hashedOtp, expiresAt, 0, "password_reset");
+      await authRepo.updateOtp(account.id, account.email, hashedOtp, expiresAt, 0, "password_reset");
       try {
         await mailer.sendMail({
           from: `Solo Spot App<no-reply@cheulongsear.dev>`,
@@ -133,7 +134,7 @@ export const createAuthService = (db: any): AuthService => {
         console.error("Failed to send verification email:", error);
         throw new HttpError("Failed to send verification email", 500);
       }
-      return { message: "OTP sent successfully", otp, account};
+      return { message: "OTP sent successfully", otp, account };
     },
     resetPassword: async (accountId: string, otp: string, newPassword: string) => {
       const storedOtp = await authRepo.getOtp(accountId);
@@ -151,7 +152,7 @@ export const createAuthService = (db: any): AuthService => {
       const isValid = await verifyString(otp, storedOtp.otp);
       if (!isValid) {
         storedOtp.attempts++;
-        await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts, "password_reset");
+        await authRepo.updateOtp(accountId, 'email', storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts, "password_reset");
         throw new HttpError("Invalid OTP", 401);
       }
       const hashedPassword = await hashString(newPassword);
@@ -167,7 +168,7 @@ export const createAuthService = (db: any): AuthService => {
       const otp = generateOtp();
       const hashedOtp = await hashString(otp);
       const expiresAt = otpExpiresIn();
-      await authRepo.updateOtp(accountId, hashedOtp, expiresAt, 0, "email_verification");
+      await authRepo.updateOtp(accountId, account.email, hashedOtp, expiresAt, 0, "email_verification");
       try {
         await mailer.sendMail({
           from: `Solo Spot App<no-reply@cheulongsear.dev>`,
@@ -196,7 +197,7 @@ export const createAuthService = (db: any): AuthService => {
       const isValid = await verifyString(otp, storedOtp.otp);
       if (!isValid) {
         storedOtp.attempts++;
-        await authRepo.updateOtp(accountId, storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts, "email_verification");
+        await authRepo.updateOtp(accountId, 'email', storedOtp.otp, storedOtp.expiresAt, storedOtp.attempts, "email_verification");
         throw new HttpError("Invalid OTP", 401);
       }
       if (emailVerified) {
@@ -301,6 +302,96 @@ export const createAuthService = (db: any): AuthService => {
         refreshToken
       };
     },
+    loginPasswordless: async (email: string) => {
+      // In a real implementation, you would generate a magic link and send it to the user
+      const account = await authRepo.getByEmail(email);
+      if (!account) {
+        throw new HttpError("Account not found", 404);
+      }
+      // 1. Generate a raw random token
+      const rawToken = randomBytes(32).toString('hex');
+
+      // 2. Hash it before saving (security rule: never store raw secrets)
+      const hashedToken = await argon2.hash(rawToken);
+
+      // 3. Save to DB with expiration (e.g., 15 minutes)
+      await authRepo.updateOtp(account?.id, email, hashedToken, new Date(Date.now() + 15 * 60 * 1000), 0, "passwordless_login");
+
+      // 4. Create the URL
+      const magicLink = `http://localhost:5000/auth/v1/login/callback?token=${rawToken}&email=${email}`;
+
+      try {
+        await mailer.sendMail({
+          from: `Solo Spot App<no-reply@cheulongsear.dev>`,
+          to: account.email,
+          subject: "Your magic link",
+          html: `<p>Click <a href="${magicLink}">here</a> to login.</p>`,
+        });
+        console.log(`Magic link sent to ${account.email}: ${magicLink}`);
+      } catch (err) {
+        console.error("Failed to send magic link email:", err);
+        throw new Error("Failed to send magic link email");
+      }
+      
+      return {
+        success: true,
+        message: "Passwordless login initiated. Check your email for the magic link.",
+        magicLink,
+        token: rawToken // for testing purposes
+      };
+    },
+
+    loginCallback: async (email: string, token: string) => {
+      // Verify the OTP
+      const otpRecord = await authRepo.getOtpByEmail(email);
+      if (!otpRecord) {
+        throw new HttpError("Invalid or expired magic link", 400);
+      }
+      if (otpRecord.expiresAt < new Date()) {
+        throw new HttpError("Magic link has expired", 400);
+      }
+      
+      // Verify the token
+      const isValid = await argon2.verify(otpRecord.otp, token);
+      if (!isValid) {
+        throw new HttpError("Invalid or expired magic link", 400);
+      }
+      
+      // Delete the OTP after successful verification
+      await authRepo.deleteOtp(otpRecord.accountId);
+      
+      // Get the account to return user info
+      const account = await authRepo.getByEmail(email);
+      if (!account) {
+        throw new HttpError("Account not found", 404);
+      }
+      const refreshToken = generateRefreshToken({
+        accountId: account.id,
+        email: account.email,
+        isRefresh: true
+      });
+      const decodedRefreshToken = decodeToken(refreshToken);
+      const { exp } = decodedRefreshToken as { exp: number };
+      const expDate = new Date(exp * 1000)
+
+      await authRepo.saveRefreshToken(account.id, refreshToken, expDate);
+
+      const accessToken = generateToken({
+        accountId: account.id,
+        email: account.email,
+      });
+      
+      // In a real implementation, you would verify the token and issue JWT
+      // For now, just return success
+      return {
+        success: true,
+        accessToken,
+        refreshToken,
+        message: "Passwordless login callback processed successfully.",
+        email,
+      };
+    },
+
     // getAllPlaces: async () => {
     //   return placeRepo.getAll();
     // },

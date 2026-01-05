@@ -36,7 +36,9 @@ export const createAuthRouter = ({ authService }: { authService: any }) => {
 
     router.route("/2fa/recover").post(validate(recoveryLoginSchema), asyncHandler(controller.recoveryLogin));
 
-    
+    router.route("/login/passwordless").post(asyncHandler(controller.loginPasswordless));
+
+    router.route("/login/callback").get(asyncHandler(controller.loginCallback));
     // router.post("/password-reset", (req: express.Request, res: express.Response) => {
     //     res.json({ message: "Password reset endpoint" });
     // });

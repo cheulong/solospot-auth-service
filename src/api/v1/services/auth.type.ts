@@ -12,6 +12,9 @@ export interface AuthService {
   setup2FA: (email: string) => Promise<any>;
   verify2FA: (email: string, otp: string) => Promise<any>;
   verifyAndUseRecoveryCode: (email: string, recoveryCode: string) => Promise<any>;
+  loginPasswordless: (email: string) => Promise<any>;
+  loginCallback: (email: string, token: string) => Promise<any>;
+  
   // getAllPlaces: () => Promise<any[]>;
   // createPlace: (placeData: any) => Promise<any>;
   // getPlaceById: (id: string) => Promise<any>;
