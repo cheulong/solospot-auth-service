@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { verifyToken } from "../../../../security/jwt";
+import { verifyToken } from "../../../security/jwt";
 
 export const authenticate = (req: Request, res: Response, next: NextFunction) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -10,8 +10,6 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 
   try {
     const decoded = verifyToken(token);
-    console.log({decoded});
-    
     (req as any).account = decoded;
     next();
   } catch (error) {

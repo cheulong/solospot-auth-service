@@ -1,9 +1,7 @@
 import type { AuthService } from "./auth.type";
 import { createAuthRepository } from "../repositories/auth.repository";
-import { hashString, verifyString } from "../../../../security/hash";
-import jwt from "jsonwebtoken";
-import { decodeToken, generateRefreshToken, generateToken, verifyRefreshToken } from "../../../../security/jwt";
-import { DateTime } from "luxon";
+import { hashString, verifyString } from "../../../security/hash";
+import { decodeToken, generateRefreshToken, generateToken, verifyRefreshToken } from "../../../security/jwt";
 import { HttpError } from "../../../errors/HttpError";
 import { generateOtp, otpExpiresIn } from "../../../utils/otp";
 import { mailer } from "../../../utils/mailer";
@@ -11,7 +9,6 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { randomBytes } from 'node:crypto';
 import { decryptSecret, encryptSecret } from "../../../utils/crypto";
-import argon2 from 'argon2';
 
 const OTP_MAX_ATTEMPTS = 5;
 
@@ -35,6 +32,7 @@ export const createAuthService = (db: any): AuthService => {
         throw new HttpError("Account not found", 404);
       }
       const isValid = await verifyString(password, account.passwordHash);
+      console.log(isValid);
       if (!isValid) {
         throw new HttpError("Invalid password", 401);
       }
@@ -312,7 +310,7 @@ export const createAuthService = (db: any): AuthService => {
       const rawToken = randomBytes(32).toString('hex');
 
       // 2. Hash it before saving (security rule: never store raw secrets)
-      const hashedToken = await argon2.hash(rawToken);
+      const hashedToken = await hashString(rawToken);
 
       // 3. Save to DB with expiration (e.g., 15 minutes)
       await authRepo.updateOtp(account?.id, email, hashedToken, new Date(Date.now() + 15 * 60 * 1000), 0, "passwordless_login");
@@ -352,7 +350,7 @@ export const createAuthService = (db: any): AuthService => {
       }
       
       // Verify the token
-      const isValid = await argon2.verify(otpRecord.otp, token);
+      const isValid = await verifyString(otpRecord.otp, token);
       if (!isValid) {
         throw new HttpError("Invalid or expired magic link", 400);
       }
@@ -391,28 +389,7 @@ export const createAuthService = (db: any): AuthService => {
         email,
       };
     },
-
-    // getAllPlaces: async () => {
-    //   return placeRepo.getAll();
-    // },
-    // getPlaceById: async (id: string) => {
-    //   const place = await placeRepo.getById(id);
-    //   if (!place) {
-    //     throw new Error(`Place with id ${id} not found`);
-    //   }
-    //   return place;
-    // },
-    // updatePlaceById: async (id: string, placeData: any) => {
-    //   await placeRepo.getById(id);
-    //   return placeRepo.updateById(id, placeData);
-    // },
-    // deletePlaceById: async (id: string) => {
-    //   await placeRepo.getById(id);
-    //   return placeRepo.deleteById(id);
-    // },
-    // deleteAllPlaces: async () => {
-    //   return placeRepo.deleteAll();
-    // },
   }
 };
+
 

@@ -15,9 +15,4 @@ export interface AuthRepository {
   updateTwoFactorSecret: (email: string, twoFactorSecret: string) => Promise<any>;
   updateTwoFactorVerified: (email: string, twoFactorEnabled: boolean) => Promise<any>;
   saveRecoveryCodes: (email: string, recoveryCodes: string[]) => Promise<any>;
-  // getAll: () => Promise<any[]>;
-  // getById: (id: string) => Promise<any>;
-  // updateById: (id: string, authData: any) => Promise<any>;
-  // deleteById: (id: string) => Promise<any>;
-  // deleteAll: () => Promise<any[]>;
 }

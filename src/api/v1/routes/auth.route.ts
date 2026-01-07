@@ -2,7 +2,7 @@ import express from "express";
 import { asyncHandler } from "../middleware/asyncHandler.middleware";
 import { createAuthController } from "../controllers/auth.controller";
 import { validate } from "../middleware/validate.middleware";
-import { createUserSchema, recoveryLoginSchema } from "../db/schema/auth.schema";
+import { createUserSchema, recoveryLoginSchema } from "../db/schema/auth.validation";
 import { authenticate } from "../middleware/auth";
 
 export const createAuthRouter = ({ authService }: { authService: any }) => {
@@ -39,13 +39,6 @@ export const createAuthRouter = ({ authService }: { authService: any }) => {
     router.route("/login/passwordless").post(asyncHandler(controller.loginPasswordless));
 
     router.route("/login/callback").get(asyncHandler(controller.loginCallback));
-    // router.post("/password-reset", (req: express.Request, res: express.Response) => {
-    //     res.json({ message: "Password reset endpoint" });
-    // });
-
-    // router.post("/verify-email", (req, res) => {
-    //     res.json({ message: "Verify email endpoint" });
-    // });
 
     return router;
 };

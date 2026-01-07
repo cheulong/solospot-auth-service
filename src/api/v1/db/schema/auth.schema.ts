@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -73,53 +72,3 @@ export const verificationTable = pgTable("verification", {
   attempts: integer("attempts").default(0),
 });
 
-/**
- * @openapi
- * components:
- *   schemas:
- *     CreatePlaceInput:
- *       type: object
- *       required:
- *         - name
- *       properties:
- *         name:
- *           type: string
- *           description: The name of the place
- *           default: "Central Park"
- *     CreatePlaceResponse:
- *       type: object
- *       properties:
- *         name:
- *           type: string
- *         id:
- *           type: string
- *         createdAt:
- *           type: string
- */
-export const createUserSchema = object({
-  body: object({
-    email: z.string().email("Invalid email address").trim().toLowerCase(),
-    password: z.string().min(6, "Password must be at least 6 characters long"),
-    firstName: z.string({
-      error: "First name is required",
-    }).min(1, "First name is required")
-    .transform((val) => escapeHtml(val)),
-    lastName: z.string({
-      error: "Last name is required",
-    }).min(1, "Last name is required")
-    .transform((val) => escapeHtml(val))
-  }),
-});
-
-export const recoveryLoginSchema = object({
-  body: object({
-    email: z.string({
-      error: "Email is required",
-    }).email("Invalid email address").trim().toLowerCase(),
-    recoveryCode: z.string({
-      error: "Recovery code is required",
-    }).min(6, "Recovery code must be at least 6 characters long"),
-  }),
-});
-
-export type CreateUserInput = z.infer<typeof createUserSchema>;

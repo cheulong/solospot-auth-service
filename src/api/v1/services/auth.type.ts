@@ -14,11 +14,4 @@ export interface AuthService {
   verifyAndUseRecoveryCode: (email: string, recoveryCode: string) => Promise<any>;
   loginPasswordless: (email: string) => Promise<any>;
   loginCallback: (email: string, token: string) => Promise<any>;
-  
-  // getAllPlaces: () => Promise<any[]>;
-  // createPlace: (placeData: any) => Promise<any>;
-  // getPlaceById: (id: string) => Promise<any>;
-  // updatePlaceById: (id: string, placeData: any) => Promise<any>;
-  // deletePlaceById: (id: string) => Promise<any>;
-  // deleteAllPlaces: () => Promise<any[]>;
 }

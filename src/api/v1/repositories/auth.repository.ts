@@ -143,38 +143,4 @@ export const createAuthRepository = (db: any): AuthRepository => ({
       .returning();
     return updatedAuth;
   },
-  // getAll: async () => {
-  //   return db.select().from(placeTable);
-  // },
-  // getById: async (id: string) => {
-  //   const [place] = await db
-  //     .select()
-  //     .from(placeTable)
-  //     .where(eq(placeTable.id, id));
-
-  //   return place;
-  // },
-  // updateById: async (id: string, placeData: any) => {
-  //   const [place] = await db
-  //     .update(placeTable)
-  //     .set(placeData)
-  //     .where(eq(placeTable.id, id))
-  //     .returning();
-
-  //   return place;
-  // },
-  // deleteById: async (id: string) => {
-  //   const [place] = await db
-  //     .delete(placeTable)
-  //     .where(eq(placeTable.id, id))
-  //     .returning();
-
-  //   return place;
-  // },
-  // deleteAll: async () => {
-  //   const deletedPlaces = await db
-  //     .delete(placeTable)
-  //     .returning({ deleted: placeTable.id });
-  //   return deletedPlaces;
-  // },
 });
