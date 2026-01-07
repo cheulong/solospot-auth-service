@@ -41,7 +41,7 @@ describe('Auth Controller', () => {
     it('should return 409 if account already exists', async () => {
       mockAuthService.getAccountByEmail.mockResolvedValue({ id: '1' });
 
-      const req = { body: { email: 'test@test.com' } };
+      const req: any = { body: { email: 'test@test.com' } };
       const res = mockRes();
 
       await controller.createAccount(req, res);
@@ -54,7 +54,7 @@ describe('Auth Controller', () => {
       mockAuthService.getAccountByEmail.mockResolvedValue(null);
       mockAuthService.createAccount.mockResolvedValue({ id: '1', email: 'test@test.com' });
 
-      const req = { body: { email: 'test@test.com' } };
+      const req: any = { body: { email: 'test@test.com' } };
       const res = mockRes();
 
       await controller.createAccount(req, res);
@@ -68,7 +68,7 @@ describe('Auth Controller', () => {
     it('should return 401 if account does not exist', async () => {
       mockAuthService.getAccountByEmail.mockResolvedValue(null);
 
-      const req = { body: { email: 'x@test.com', password: 'pass' } };
+      const req: any = { body: { email: 'x@test.com', password: 'pass' } };
       const res = mockRes();
 
       await controller.login(req, res);
@@ -84,7 +84,7 @@ describe('Auth Controller', () => {
         refreshToken: 'refresh',
       });
 
-      const req = { body: { email: 'test@test.com', password: 'pass' } };
+      const req: any = { body: { email: 'test@test.com', password: 'pass' } };
       const res = mockRes();
 
       await controller.login(req, res);
@@ -104,7 +104,7 @@ describe('Auth Controller', () => {
 
   describe('refreshToken', () => {
     it('should return 401 if refresh token is missing', async () => {
-      const req = { cookies: {} };
+      const req: any = { cookies: {} };
       const res = mockRes();
 
       await controller.refreshToken(req, res);
@@ -115,7 +115,7 @@ describe('Auth Controller', () => {
 
   describe('logout', () => {
     it('should clear refreshToken cookie', async () => {
-      const req = { cookies: { refreshToken: 'token' } };
+      const req: any = { cookies: { refreshToken: 'token' } };
       const res = mockRes();
 
       await controller.logout(req, res);
@@ -131,7 +131,7 @@ describe('Auth Controller', () => {
 
   describe('changePassword', () => {
     it('should return 401 if accountId is missing', async () => {
-      const req = { body: {} };
+      const req: any = { body: {} };
       const res = mockRes();
 
       await controller.changePassword(req, res);
