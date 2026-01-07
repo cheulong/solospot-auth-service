@@ -16,19 +16,35 @@ import escapeHtml from 'escape-html';
  * @openapi
  * components:
  *   schemas:
- *     Place:
+ *     Account:
  *       type: object
  *       properties:
  *         id:
  *           type: string
- *         name:
+ *         email:
  *           type: string
+ *         passwordHash:
+ *           type: string
+ *         emailVerifiedAt:
+ *           type: string
+ *         emailVerified:
+ *           type: boolean
  *         createdAt:
  *           type: string
- *     PlaceList:
+ *         role:
+ *           type: string
+ *         twoFactorSecret:
+ *           type: string
+ *         twoFactorEnabled:
+ *           type: boolean
+ *         twoFactorBackupCodes:
+ *           type: array
+ *           items:
+ *             type: string
+ *     AccountList:
  *       type: array
  *       items:
- *         $ref: "#/components/schemas/Place"
+ *         $ref: "#/components/schemas/Account"
  */
 export const authTable = pgTable("auth", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -45,6 +61,30 @@ export const authTable = pgTable("auth", {
   twoFactorBackupCodes: text("two_factor_backup_codes").array(), // JSON array of backup codes
 });
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     RefreshToken:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         accountId:
+ *           type: string
+ *         tokenHash:
+ *           type: string
+ *         expiresAt:
+ *           type: string
+ *         revokedAt:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *     RefreshTokenList:
+ *       type: array
+ *       items:
+ *         $ref: "#/components/schemas/RefreshToken"
+ */
 export const refreshTokenTable = pgTable("refresh_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
   accountId: uuid("account_id")
@@ -59,6 +99,34 @@ export const refreshTokenTable = pgTable("refresh_tokens", {
   index("idx_refresh_token_hash").on(table.tokenHash),
 ]);
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Verification:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         accountId:
+ *           type: string
+ *         otp:
+ *           type: string
+ *         identifier:
+ *           type: string
+ *         reason:
+ *           type: string
+ *         expiresAt:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *         attempts:
+ *           type: integer
+ *     VerificationList:
+ *       type: array
+ *       items:
+ *         $ref: "#/components/schemas/Verification"
+ */
 export const verificationTable = pgTable("verification", {
   id: uuid("id").primaryKey().defaultRandom(),
   accountId: uuid("account_id")

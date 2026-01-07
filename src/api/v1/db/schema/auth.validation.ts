@@ -17,9 +17,30 @@ const emailSchema = z
   .toLowerCase();
 
 /**
- * Create user
+ * @openapi
+ * components:
+ *   schemas:
+ *     CreateUserInput:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *         - firstName
+ *         - lastName
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The email address
+ *         password:
+ *           type: string
+ *           description: The password
+ *         firstName:
+ *           type: string
+ *           description: The first name
+ *         lastName:
+ *           type: string
+ *           description: The last name
  */
-
 export const createUserSchema = object({
   body: object({
     email: emailSchema,
@@ -30,30 +51,142 @@ export const createUserSchema = object({
 });
 
 /**
- * Recovery login
+ * @openapi
+ * components:
+ *   schemas:
+ *     LoginInput:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The email address
+ *         password:
+ *           type: string
+ *           description: The password
  */
+export const loginSchema = object({
+    body: object({
+        email: emailSchema,
+        password: z.string({ error: "Password is required" }).min(6, "Password must be at least 6 characters long"),
+    })
+})
 
 /**
  * @openapi
  * components:
  *   schemas:
- *     CreatePlaceInput:
+ *     ChangePasswordInput:
  *       type: object
  *       required:
- *         - name
+ *         - oldPassword
+ *         - newPassword
  *       properties:
- *         name:
+ *         oldPassword:
  *           type: string
- *           description: The name of the place
- *           default: "Central Park"
- *     CreatePlaceResponse:
+ *         newPassword:
+ *           type: string
+ */
+export const changePasswordSchema = object({
+    body: object({
+        oldPassword: z.string({ error: "Old password is required" }).min(6, "Old password must be at least 6 characters long"),
+        newPassword: z.string({ error: "New password is required" }).min(6, "New password must be at least 6 characters long"),
+    })
+})
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ForgotPasswordInput:
+ *       type: object
+ *       required:
+ *         - email
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The email address
+ */
+export const forgotPasswordSchema = object({
+    body: object({
+        email: emailSchema,
+    })
+})
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     LoginPasswordlessInput:
+ *       type: object
+ *       required:
+ *         - email
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The email address
+ */
+export const loginPasswordlessSchema = object({
+    body: object({
+        email: emailSchema,
+    })
+})
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ResetPasswordInput:
+ *       type: object
+ *       required:
+ *         - accountId
+ *         - otp
+ *         - newPassword
+ *       properties:
+ *         accountId:
+ *           type: string
+ *         otp:
+ *           type: string
+ *         newPassword:
+ *           type: string
+ */
+
+export const resetPasswordSchema = object({
+    body: object({
+        accountId: z.string({ error: "Account ID is required" }),
+        otp: z.string({ error: "OTP is required" }).min(6, "OTP must be at least 6 characters long"),
+        newPassword: z.string({ error: "New password is required" }).min(6, "New password must be at least 6 characters long"),
+    })
+})
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     RecoveryLoginInput:
+ *       type: object
+ *       required:
+ *         - email
+ *         - recoveryCode
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The email address
+ *         recoveryCode:
+ *           type: string
+ *           description: The recovery code
+ *     RecoveryLoginResponse:
  *       type: object
  *       properties:
- *         name:
+ *         success:
+ *           type: boolean
+ *         message:
  *           type: string
- *         id:
+ *         accessToken:
  *           type: string
- *         createdAt:
+ *         refreshToken:
  *           type: string
  */
 export const recoveryLoginSchema = object({

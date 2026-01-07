@@ -1,9 +1,9 @@
 import type { AuthService } from "../services/auth.type";
-
+import type { Response } from "express";
 export const createAuthController = (authService: AuthService) => ({
   // @desc Create an account
   // @route POST /auth/register
-  createAccount: async (req: any, res: any) => {
+  createAccount: async (req: any, res: Response) => {
     const authData = req.body;
     const existingAccount = await authService.getAccountByEmail(authData.email);
     if (existingAccount) {
@@ -15,7 +15,7 @@ export const createAuthController = (authService: AuthService) => ({
 
   // @desc Login to an account
   // @route POST /auth/login
-  login: async (req: any, res: any) => {
+  login: async (req: any, res: Response) => {
     const { email, password } = req.body;
     const existingAccount = await authService.getAccountByEmail(email);
     if (!existingAccount) {
@@ -36,7 +36,7 @@ export const createAuthController = (authService: AuthService) => ({
     res.status(200).json({ message: "Login successful", email: accountEmail, accessToken, refreshToken });
   },
 
-  refreshToken: async (req: any, res: any) => {
+  refreshToken: async (req: any, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
       return res.status(401).json({ message: "Refresh token is required" });
@@ -49,7 +49,7 @@ export const createAuthController = (authService: AuthService) => ({
     }
   },
 
-  logout: async (req: any, res: any) => {
+  logout: async (req: any, res: Response) => {
     const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
     if (refreshToken) {
       await authService.deleteRefreshToken(refreshToken);
@@ -63,7 +63,7 @@ export const createAuthController = (authService: AuthService) => ({
     res.status(200).json({ message: "Logout successful" });
   },
 
-  changePassword: async (req: any, res: any) => {
+  changePassword: async (req: any, res: Response) => {
     const accountId = req.account?.accountId;
     if (!accountId) {
       return res.status(401).json({ message: "Account ID is required" });
@@ -73,19 +73,19 @@ export const createAuthController = (authService: AuthService) => ({
     res.status(200).json({ message: "Password changed successfully" });
   },
 
-  forgotPassword: async (req: any, res: any) => {
+  forgotPassword: async (req: any, res: Response) => {
     const { email } = req.body;
     const result = await authService.forgotPassword(email);
     res.status(200).json({ message: "Password reset link sent to your email", ...result });
   },
 
-  resetPassword: async (req: any, res: any) => {
+  resetPassword: async (req: any, res: Response) => {
     const { accountId, otp, newPassword } = req.body;
     await authService.resetPassword(accountId, otp, newPassword);
     res.status(200).json({ message: "Password reset successfully" });
   },
 
-  sendVerification: async (req: any, res: any) => {
+  sendVerification: async (req: any, res: Response) => {
     const accountId = req.account?.accountId;
     if (!accountId) {
       return res.status(401).json({ message: "Account ID is required" });
@@ -94,7 +94,7 @@ export const createAuthController = (authService: AuthService) => ({
     res.status(200).json(result);
   },
 
-  verifyEmail: async (req: any, res: any) => {
+  verifyEmail: async (req: any, res: Response) => {
     const accountId = req.account?.accountId;
     if (!accountId) {
       return res.status(401).json({ message: "Account ID is required" });
@@ -103,7 +103,7 @@ export const createAuthController = (authService: AuthService) => ({
     await authService.verifyOtp(accountId, otp, true);
     res.status(200).json({ message: "OTP verified successfully" });
   },
-  verifyOtp: async (req: any, res: any) => {
+  verifyOtp: async (req: any, res: Response) => {
     const accountId = req.account?.accountId;
     if (!accountId) {
       return res.status(401).json({ message: "Account ID is required" });
@@ -112,7 +112,7 @@ export const createAuthController = (authService: AuthService) => ({
     await authService.verifyOtp(accountId, otp, false);
     res.status(200).json({ message: "OTP verified successfully" });
   },
-  setup2FA: async (req: any, res: any) => {
+  setup2FA: async (req: any, res: Response) => {
     const email = req.account?.email;
     if (!email) {
       return res.status(401).json({ message: "Email is required" });
@@ -120,7 +120,7 @@ export const createAuthController = (authService: AuthService) => ({
     const result = await authService.setup2FA(email);
     res.status(200).json(result);
   },
-  verify2FA: async (req: any, res: any) => {
+  verify2FA: async (req: any, res: Response) => {
     const email = req.account?.email;
     if (!email) {
       return res.status(401).json({ message: "Email is required" });
@@ -129,7 +129,7 @@ export const createAuthController = (authService: AuthService) => ({
     await authService.verify2FA(email, otp);
     res.status(200).json({ message: "2FA verified successfully" });
   },
-  recoveryLogin: async (req: any, res: any) => {
+  recoveryLogin: async (req: any, res: Response) => {
     const { email, recoveryCode } = req.body;
     if (!email) {
       return res.status(401).json({ message: "Email is required" });
@@ -145,7 +145,7 @@ export const createAuthController = (authService: AuthService) => ({
     });
     res.status(200).json(result);
   },
-  loginPasswordless: async (req: any, res: any) => {
+  loginPasswordless: async (req: any, res: Response) => {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
@@ -153,7 +153,7 @@ export const createAuthController = (authService: AuthService) => ({
     const result = await authService.loginPasswordless(email);
     res.status(200).json(result);
   },
-  loginCallback: async (req: any, res: any) => {
+  loginCallback: async (req: any, res: Response) => {
     const { email, token } = req.query;
     if (!email || !token) {
       return res.status(400).json({ message: "Email and token are required" });
