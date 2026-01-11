@@ -4,32 +4,30 @@ import { verificationTable } from "../db/schema/auth.schema";
 type DB = any;
 
 export const createVerificationRepository = (db: DB) => {
-  const upsert = async (
-    accountId: string,
-    identifier: string,
-    otp: string,
-    expiresAt: Date,
-    attempts: number,
-    reason: string
-  ) => {
-    const existing = await db.select().from(verificationTable).where(eq(verificationTable.accountId, accountId));
-
-    if (existing.length > 0) {
-      const [updated] = await db.update(verificationTable)
-        .set({ otp, identifier, accountId, expiresAt, attempts, reason })
-        .where(eq(verificationTable.accountId, accountId))
-        .returning();
-      return updated;
-    } else {
-      const [inserted] = await db.insert(verificationTable)
-        .values({ otp, identifier, accountId, expiresAt, attempts, reason })
-        .returning();
-      return inserted;
-    }
-  };
-
   return {
-    updateOtp: upsert,
+    updateOtp: async (
+      accountId: string,
+      identifier: string,
+      otp: string,
+      expiresAt: Date,
+      attempts: number,
+      reason: string
+    ) => {
+      const existing = await db.select().from(verificationTable).where(eq(verificationTable.accountId, accountId));
+
+      if (existing.length > 0) {
+        const [updated] = await db.update(verificationTable)
+          .set({ otp, identifier, accountId, expiresAt, attempts, reason })
+          .where(eq(verificationTable.accountId, accountId))
+          .returning();
+        return updated;
+      } else {
+        const [inserted] = await db.insert(verificationTable)
+          .values({ otp, identifier, accountId, expiresAt, attempts, reason })
+          .returning();
+        return inserted;
+      }
+    },
 
     getOtp: async (accountId: string) => {
       const [otp] = await db.select().from(verificationTable).where(eq(verificationTable.accountId, accountId));
@@ -46,3 +44,5 @@ export const createVerificationRepository = (db: DB) => {
     },
   };
 };
+
+export type VerificationRepositoryType = ReturnType<typeof createVerificationRepository>;

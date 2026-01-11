@@ -6,8 +6,9 @@ import { encryptSecret, decryptSecret } from "../../../utils/crypto";
 import { HttpError } from "../../../errors/HttpError";
 import { generateRefreshToken, generateToken } from "../../../security/jwt";
 
-export const createTwoFactorService = (authRepo: any, refreshTokenRepo: any) => ({
+export const createTwoFactorService = (authRepo: any) => ({
   setup2FA: async (email: string) => {
+
     const account = await authRepo.getByEmail(email);
     if (!account) throw new HttpError("Account not found", 404);
     if (account.twoFactorSecret) throw new HttpError("2FA already set up", 400);
@@ -59,3 +60,5 @@ export const createTwoFactorService = (authRepo: any, refreshTokenRepo: any) => 
     return { accessToken, refreshToken };
   }
 });
+
+export type TwoFactorServiceType = ReturnType<typeof createTwoFactorService>;

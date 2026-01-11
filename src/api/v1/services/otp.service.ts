@@ -2,11 +2,12 @@ import { generateOtp, otpExpiresIn } from "../../../utils/otp";
 import { hashString, verifyString } from "../../../security/hash";
 import { HttpError } from "../../../errors/HttpError";
 import { mailer } from "../../../utils/mailer";
+import type { VerificationRepositoryType } from "../repositories/verification.repository";
 
 const OTP_MAX_ATTEMPTS = 5;
 
-export const createOtpService = (verificationRepo: any) => ({
-  generateOtp: async (accountId: string, identifier: string, type: string) => {
+export const createOtpService = (verificationRepo: VerificationRepositoryType) => ({
+  generateOtp: async (accountId: string, identifier: string, type: 'email_verification' | 'password_reset') => {
     const otp = generateOtp();
     const hashedOtp = await hashString(otp);
     const expiresAt = otpExpiresIn();
@@ -16,7 +17,7 @@ export const createOtpService = (verificationRepo: any) => ({
     return { otp, expiresAt };
   },
 
-  sendOtpEmail: async (email: string, otp: string, type: string) => {
+  sendOtpEmail: async (email: string, otp: string, type: 'email_verification' | 'password_reset') => {
     const subject = type === "password_reset" ? "Password Reset OTP" : "Your verification code";
     const html = `<p>Your OTP is <b>${otp}</b>. It expires in 15 minutes.</p>`;
 
@@ -32,8 +33,9 @@ export const createOtpService = (verificationRepo: any) => ({
     }
   },
 
-  verifyOtp: async (accountId: string, otp: string, type: string) => {
+  verifyOtp: async (accountId: string, otp: string, type: 'password_reset' | 'email_verification') => {
     const storedOtp = await verificationRepo.getOtp(accountId);
+    
     if (!storedOtp) throw new HttpError("OTP not found", 404);
     if (storedOtp.expiresAt < new Date()) {
       await verificationRepo.deleteOtp(accountId);
@@ -57,9 +59,10 @@ export const createOtpService = (verificationRepo: any) => ({
       );
       throw new HttpError("Invalid OTP", 401);
     }
-
     return storedOtp;
   },
 
   deleteOtp: (accountId: string) => verificationRepo.deleteOtp(accountId)
 });
+
+export type OtpServiceType = ReturnType<typeof createOtpService>;

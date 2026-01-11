@@ -1,124 +1,202 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createAuthService } from './auth.service';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createAuthService } from "./auth.service";
+import { HttpError } from "../../../errors/HttpError";
+import { HTTP_STATUS } from "../../../constants/httpStatus";
 
-vi.mock('../repositories/auth.repository', () => ({
-  createAuthRepository: vi.fn(),
-}));
-
-vi.mock('../../../security/hash', () => ({
+// ---- mocks ----
+vi.mock("../../../security/hash", () => ({
   hashString: vi.fn(),
   verifyString: vi.fn(),
+  tokenHash: vi.fn(),
 }));
 
-vi.mock('../../../security/jwt', () => ({
-  generateToken: vi.fn(() => 'access-token'),
-  generateRefreshToken: vi.fn(() => 'refresh-token'),
-  decodeToken: vi.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 3600 })),
-  verifyRefreshToken: vi.fn(() => true),
+vi.mock("../../../utils/issueTokens", () => ({
+  issueTokens: vi.fn(),
 }));
 
-vi.mock('../../../utils/mailer', () => ({
-  mailer: {
-    sendMail: vi.fn(),
-  },
+vi.mock("../../../security/jwt", () => ({
+  verifyRefreshToken: vi.fn(),
 }));
 
-vi.mock('qrcode', () => ({
-  default: {
-    toDataURL: vi.fn(() => 'qr-code'),
-  },
-}));
+import { hashString, verifyString, tokenHash } from "../../../security/hash";
+import { issueTokens } from "../../../utils/issueTokens";
+import { verifyRefreshToken } from "../../../security/jwt";
 
-vi.mock('../../../utils/crypto', () => ({
-  encryptSecret: vi.fn(v => `enc-${v}`),
-  decryptSecret: vi.fn(v => v.replace('enc-', '')),
-}));
-
-import { createAuthRepository } from '../repositories/auth.repository';
-import { verifyString, hashString } from '../../../security/hash';
-
-describe('AuthService', () => {
+describe("createAuthService", () => {
   let authRepo: any;
+  let refreshTokenRepo: any;
   let service: ReturnType<typeof createAuthService>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     authRepo = {
+      create: vi.fn(),
       getByEmail: vi.fn(),
-      saveRefreshToken: vi.fn(),
+      getById: vi.fn(),
     };
 
-    (createAuthRepository as any).mockReturnValue(authRepo);
+    refreshTokenRepo = {
+      deleteRefreshToken: vi.fn(),
+      getRefreshTokenByToken: vi.fn(),
+    };
 
-    service = createAuthService({});
+    service = createAuthService(authRepo, refreshTokenRepo);
+
+    vi.clearAllMocks();
   });
 
-  it('throws 404 if account not found', async () => {
-    authRepo.getByEmail.mockResolvedValue(null);
+  describe("createAccount", () => {
+    it("hashes password and creates account", async () => {
+      (hashString as any).mockResolvedValue("hashed-password");
+      authRepo.create.mockResolvedValue({ id: "1" });
 
-    await expect(
-      service.login('test@test.com', 'password')
-    ).rejects.toMatchObject({
-      message: 'Account not found',
-      status: 404,
-    });
-  });
+      const result = await service.createAccount({
+        email: "test@test.com",
+        password: "plain",
+      });
 
-  it('throws 401 if password is invalid', async () => {
-    authRepo.getByEmail.mockResolvedValue({
-      id: '1',
-      email: 'test@test.com',
-      passwordHash: 'hashed',
-    });
-
-    (verifyString as any).mockResolvedValue(false);
-
-    await expect(
-      service.login('test@test.com', 'wrong-password')
-    ).rejects.toMatchObject({
-      message: 'Invalid password',
-      status: 401,
+      expect(hashString).toHaveBeenCalledWith("plain");
+      expect(authRepo.create).toHaveBeenCalledWith({
+        email: "test@test.com",
+        passwordHash: "hashed-password",
+      });
+      expect(result).toEqual({ id: "1" });
     });
   });
 
-  it('returns tokens on successful login', async () => {
-    authRepo.getByEmail.mockResolvedValue({
-      id: '1',
-      email: 'test@test.com',
-      passwordHash: 'hashed',
+  describe("login", () => {
+    const account = {
+      id: "1",
+      email: "test@test.com",
+      passwordHash: "hashed",
+    };
+
+    it("throws if password is invalid", async () => {
+      (verifyString as any).mockResolvedValue(false);
+
+      await expect(
+        service.login("wrong", account)
+      ).rejects.toBeInstanceOf(HttpError);
+
+      await expect(
+        service.login("wrong", account)
+      ).rejects.toMatchObject({
+        message: "Invalid email or password",
+        status: HTTP_STATUS.UNAUTHORIZED,
+      });
     });
 
-    (verifyString as any).mockResolvedValue(true);
+    it("returns tokens on success", async () => {
+      (verifyString as any).mockResolvedValue(true);
+      (issueTokens as any).mockResolvedValue({
+        accessToken: "access",
+        refreshToken: "refresh",
+      });
 
-    const result = await service.login('test@test.com', 'correct-password');
+      const result = await service.login("correct", account);
 
-    expect(result).toEqual({
-      email: 'test@test.com',
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
+      expect(verifyString).toHaveBeenCalledWith("correct", "hashed");
+      expect(issueTokens).toHaveBeenCalledWith(account, refreshTokenRepo);
+      expect(result).toEqual({
+        email: "test@test.com",
+        accessToken: "access",
+        refreshToken: "refresh",
+      });
     });
-
-    expect(authRepo.saveRefreshToken).toHaveBeenCalled();
   });
 
-  it('creates account with hashed password', async () => {
-    (hashString as any).mockResolvedValue('hashed-password');
+  describe("getByEmail", () => {
+    it("delegates to authRepo", async () => {
+      authRepo.getByEmail.mockResolvedValue({ id: "1" });
 
-    authRepo.create = vi.fn().mockResolvedValue({
-      email: 'test@test.com',
+      const result = await service.getByEmail("a@test.com");
+
+      expect(authRepo.getByEmail).toHaveBeenCalledWith("a@test.com");
+      expect(result).toEqual({ id: "1" });
+    });
+  });
+
+  describe("logout", () => {
+    it("hashes refresh token and deletes it", async () => {
+      (tokenHash as any).mockResolvedValue("hashed-token");
+      refreshTokenRepo.deleteRefreshToken.mockResolvedValue(true);
+
+      const result = await service.logout("raw-token");
+
+      expect(tokenHash).toHaveBeenCalledWith("raw-token");
+      expect(refreshTokenRepo.deleteRefreshToken).toHaveBeenCalledWith(
+        "hashed-token"
+      );
+      expect(result).toBe(true);
+    });
+  });
+
+  describe("refreshToken", () => {
+    const storedToken = {
+      accountId: "1",
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+
+    const account = {
+      id: "1",
+      email: "test@test.com",
+    };
+
+    it("throws if refresh token is invalid", async () => {
+      (verifyRefreshToken as any).mockReturnValue(false);
+
+      await expect(
+        service.refreshToken("bad-token")
+      ).rejects.toBeInstanceOf(HttpError);
     });
 
-    const result = await service.createAccount({
-      email: 'test@test.com',
-      password: 'plain',
+    it("throws if refresh token not found", async () => {
+      (verifyRefreshToken as any).mockReturnValue(true);
+      (tokenHash as any).mockResolvedValue("hashed");
+      refreshTokenRepo.getRefreshTokenByToken.mockResolvedValue(null);
+
+      await expect(
+        service.refreshToken("token")
+      ).rejects.toMatchObject({
+        message: "Refresh token not found",
+        status: HTTP_STATUS.NOT_FOUND,
+      });
     });
 
-    expect(hashString).toHaveBeenCalledWith('plain');
-    expect(authRepo.create).toHaveBeenCalledWith({
-      email: 'test@test.com',
-      passwordHash: 'hashed-password',
+    it("throws if refresh token expired", async () => {
+      (verifyRefreshToken as any).mockReturnValue(true);
+      (tokenHash as any).mockResolvedValue("hashed");
+
+      refreshTokenRepo.getRefreshTokenByToken.mockResolvedValue({
+        ...storedToken,
+        expiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(
+        service.refreshToken("token")
+      ).rejects.toMatchObject({ 
+        message: "Refresh token expired", 
+        status: HTTP_STATUS.UNAUTHORIZED 
+      });
     });
-    expect(result.email).toBe('test@test.com');
+
+    it("issues new tokens on success", async () => {
+      (verifyRefreshToken as any).mockReturnValue(true);
+      (tokenHash as any).mockResolvedValue("hashed");
+      refreshTokenRepo.getRefreshTokenByToken.mockResolvedValue(storedToken);
+      authRepo.getById.mockResolvedValue(account);
+
+      (issueTokens as any).mockResolvedValue({
+        accessToken: "new-access",
+        refreshToken: "new-refresh",
+      });
+
+      const result = await service.refreshToken("token");
+
+      expect(issueTokens).toHaveBeenCalledWith(account, refreshTokenRepo);
+      expect(result).toEqual({
+        accessToken: "new-access",
+        refreshToken: "new-refresh",
+      });
+    });
   });
 });

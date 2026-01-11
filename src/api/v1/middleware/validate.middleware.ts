@@ -1,4 +1,3 @@
-// src/middlewares/validate.ts
 import { ZodObject } from "zod";
 
 export const validate =

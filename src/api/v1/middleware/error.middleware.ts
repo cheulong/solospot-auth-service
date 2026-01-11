@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { HTTP_STATUS } from "../../../constants/httpStatus";
 
 export const errorHandler = (err: any, req: any, res: any, next: any) => {
 
@@ -9,8 +10,8 @@ export const errorHandler = (err: any, req: any, res: any, next: any) => {
     });
   }
 
-  res.status(err.status || 500).json({
-    error: err.message,
+  res.status(err.status || HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    message: err.message,
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 };

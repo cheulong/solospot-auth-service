@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Request, Response, NextFunction } from "express";
-import { authenticate } from "./auth";
+import { authenticate } from "./auth.middleware";
 import { verifyToken } from "../../../security/jwt";
 
 // 🔹 mock verifyToken

@@ -50,7 +50,7 @@ describe("errorHandler middleware", () => {
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      error: "Not authorized",
+      message: "Not authorized",
     });
   });
 
@@ -61,7 +61,7 @@ describe("errorHandler middleware", () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      error: "Something broke",
+      message: "Something broke",
     });
   });
 
@@ -75,7 +75,7 @@ describe("errorHandler middleware", () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: "Dev error",
+        message: "Dev error",
         stack: expect.any(String),
       })
     );
@@ -92,7 +92,7 @@ describe("errorHandler middleware", () => {
     errorHandler(error, req, res, next);
 
     expect(res.json).toHaveBeenCalledWith({
-      error: "Prod error",
+      message: "Prod error",
     });
 
     process.env.NODE_ENV = originalEnv;

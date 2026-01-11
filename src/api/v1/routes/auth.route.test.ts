@@ -1,113 +1,143 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import express from 'express';
-import request from 'supertest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import request from "supertest";
+import express from "express";
+import cookieParser from "cookie-parser";
+import { createAuthRoute } from "./auth.route";
+import { HTTP_STATUS } from "../../../constants/httpStatus";
 
-vi.mock('../middleware/asyncHandler.middleware', () => ({
+/* ------------------------------------------------------------------ */
+/*                            Middleware mocks                         */
+/* ------------------------------------------------------------------ */
+
+vi.mock("../middleware/asyncHandler.middleware", () => ({
   asyncHandler: (fn: any) => fn,
 }));
 
-vi.mock('../middleware/auth', () => ({
-  authenticate: (_req: any, _res: any, next: any) => next(),
-}));
-
-vi.mock('../middleware/validate.middleware', () => ({
+vi.mock("../middleware/validate.middleware", () => ({
   validate: () => (_req: any, _res: any, next: any) => next(),
 }));
 
-vi.mock('../controllers/auth.controller', () => ({
-  createAuthController: vi.fn(),
+vi.mock("../middleware/auth.middleware", () => ({
+  authenticate: (_req: any, _res: any, next: any) => next(),
 }));
 
-import { createAuthRouter } from './auth.route';
-import { createAuthController } from '../controllers/auth.controller';
+/* ------------------------------------------------------------------ */
 
-const mockController = {
-  createAccount: vi.fn((_req, res) => res.sendStatus(201)),
-  login: vi.fn((_req, res) => res.sendStatus(200)),
-  refreshToken: vi.fn((_req, res) => res.sendStatus(200)),
-  logout: vi.fn((_req, res) => res.sendStatus(200)),
-  changePassword: vi.fn((_req, res) => res.sendStatus(200)),
-  forgotPassword: vi.fn((_req, res) => res.sendStatus(200)),
-  resetPassword: vi.fn((_req, res) => res.sendStatus(200)),
-  sendVerification: vi.fn((_req, res) => res.sendStatus(200)),
-  verifyEmail: vi.fn((_req, res) => res.sendStatus(200)),
-  verifyOtp: vi.fn((_req, res) => res.sendStatus(200)),
-  setup2FA: vi.fn((_req, res) => res.sendStatus(200)),
-  verify2FA: vi.fn((_req, res) => res.sendStatus(200)),
-  recoveryLogin: vi.fn((_req, res) => res.sendStatus(200)),
-  loginPasswordless: vi.fn((_req, res) => res.sendStatus(200)),
-  loginCallback: vi.fn((_req, res) => res.sendStatus(200)),
-};
+describe("Auth routes", () => {
+  let app: express.Express;
+  let authService: any;
 
-const buildApp = () => {
-  (createAuthController as any).mockReturnValue(mockController);
-
-  const app = express();
-  app.use(express.json());
-
-  app.use(
-    '/auth',
-    createAuthRouter({ authService: {} })
-  );
-
-  return app;
-};
-
-describe('Auth Router', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    authService = {
+      createAccount: vi.fn(),
+      login: vi.fn(),
+      refreshToken: vi.fn(),
+      logout: vi.fn(),
+      getByEmail: vi.fn(),
+    };
+
+    app = express();
+    app.use(express.json());
+    app.use(cookieParser());
+    app.use("/auth/v1", createAuthRoute(authService));
   });
 
-  it('POST /auth/register', async () => {
-    const app = buildApp();
+  describe("POST /auth/v1/register", () => {
+    it("returns 201 when account is created", async () => {
+      authService.getByEmail.mockResolvedValue(null);
+      authService.createAccount.mockResolvedValue({
+        id: "1",
+        email: "test@test.com",
+      });
 
-    await request(app)
-      .post('/auth/register')
-      .send({})
-      .expect(201);
+      const res = await request(app)
+        .post("/auth/v1/register")
+        .send({ email: "test@test.com", password: "123456" });
 
-    expect(mockController.createAccount).toHaveBeenCalled();
+      expect(res.status).toBe(HTTP_STATUS.CREATED);
+      expect(res.body.email).toBe("test@test.com");
+    });
+
+    it("returns 409 when account already exists", async () => {
+      authService.getByEmail.mockResolvedValue({ id: "1" });
+
+      const res = await request(app)
+        .post("/auth/v1/register")
+        .send({ email: "test@test.com", password: "123456" });
+
+      expect(res.status).toBe(HTTP_STATUS.CONFLICT);
+      expect(res.body.message).toBe("Account already exists");
+    });
   });
 
-  it('POST /auth/login', async () => {
-    const app = buildApp();
+  describe("POST /auth/v1/login", () => {
+    it("returns 200 and sets refresh token cookie", async () => {
+      authService.getByEmail.mockResolvedValue({
+        id: "1",
+        email: "test@test.com",
+        passwordHash: "hash",
+      });
 
-    await request(app)
-      .post('/auth/login')
-      .send({})
-      .expect(200);
+      authService.login.mockResolvedValue({
+        email: "test@test.com",
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+      });
 
-    expect(mockController.login).toHaveBeenCalled();
+      const res = await request(app)
+        .post("/auth/v1/login")
+        .send({ email: "test@test.com", password: "123456" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.accessToken).toBe("access-token");
+      expect(res.headers["set-cookie"][0]).toContain("refreshToken=");
+    });
+
+    it("returns 401 for invalid credentials", async () => {
+      authService.getByEmail.mockResolvedValue(null);
+
+      const res = await request(app)
+        .post("/auth/v1/login")
+        .send({ email: "bad@test.com", password: "wrong" });
+
+      expect(res.status).toBe(HTTP_STATUS.UNAUTHORIZED);
+    });
   });
 
-  it('POST /auth/logout (authenticated)', async () => {
-    const app = buildApp();
+  describe("POST /auth/v1/refresh", () => {
+    it("returns new tokens when refresh token is valid", async () => {
+      authService.refreshToken.mockResolvedValue({
+        accessToken: "new-access",
+        refreshToken: "new-refresh",
+      });
 
-    await request(app)
-      .post('/auth/logout')
-      .expect(200);
+      const res = await request(app)
+        .post("/auth/v1/refresh")
+        .set("Cookie", ["refreshToken=refresh-token"]);
 
-    expect(mockController.logout).toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(res.body.accessToken).toBe("new-access");
+    });
+
+    it("returns 401 when refresh token is missing", async () => {
+      const res = await request(app).post("/auth/v1/refresh");
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe("Refresh token is required");
+    });
   });
 
-  it('POST /auth/2fa/recover (with validation)', async () => {
-    const app = buildApp();
+  describe("POST /auth/v1/logout", () => {
+    it("logs out user and clears cookie", async () => {
+      authService.logout.mockResolvedValue(true);
 
-    await request(app)
-      .post('/auth/2fa/recover')
-      .send({})
-      .expect(200);
+      const res = await request(app)
+        .post("/auth/v1/logout")
+        .set("Cookie", ["refreshToken=refresh-token"]);
 
-    expect(mockController.recoveryLogin).toHaveBeenCalled();
-  });
-
-  it('GET /auth/login/callback', async () => {
-    const app = buildApp();
-
-    await request(app)
-      .get('/auth/login/callback')
-      .expect(200);
-
-    expect(mockController.loginCallback).toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(res.body.deleted).toBe(true);
+      expect(res.headers["set-cookie"][0]).toContain("refreshToken=;");
+    });
   });
 });

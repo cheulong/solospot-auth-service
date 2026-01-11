@@ -5,14 +5,14 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
-import { createAuthRouter } from "../api/v1/routes/auth.route";
-import { createAuthService } from "../api/v1/services/auth.service";
+import { createRouter } from "../api/v1/routes";
 import { errorHandler } from "../api/v1/middleware/error.middleware";
 import { notFound } from "../api/v1/middleware/notFound.middleware";
 import { setCache } from "../api/v1/middleware/cache.middleware";
 import { authLimiter, otpLimiter } from "../api/v1/middleware/rateLimiter.middleware";
 import swaggerDocs from "../utils/swagger";
 import { HTTP_STATUS } from "../constants/httpStatus";
+import { createService, ServiceType } from "../api/v1/services";
 
 export default function (db: any, port: number): Express {
   const app = express();
@@ -39,11 +39,11 @@ export default function (db: any, port: number): Express {
     res.status(HTTP_STATUS.OK).send("Auth server is healthy.");
   });
 
-  const authService = createAuthService(db);
+  const services: ServiceType = createService(db);
 
-  app.use("/auth/v1/send-verification", otpLimiter);
+  app.use("/api/v1/auth/send-verification", otpLimiter);
 
-  app.use("/auth/v1", authLimiter, createAuthRouter({ authService }));
+  app.use("/api/v1", authLimiter, createRouter(services));
 
   swaggerDocs(app, port);
   app.use(notFound);

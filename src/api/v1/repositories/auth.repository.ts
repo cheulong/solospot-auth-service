@@ -5,6 +5,8 @@ type DB = any;
 
 export const createAuthRepository = (db: DB) => ({
   create: async (authData: any) => {
+      console.log(authData);
+
     const [auth] = await db.insert(authTable).values(authData).returning();
     return auth;
   },
@@ -59,3 +61,5 @@ export const createAuthRepository = (db: DB) => ({
     return updated;
   },
 });
+
+export type AuthRepositoryType = ReturnType<typeof createAuthRepository>;

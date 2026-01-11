@@ -1,6 +1,5 @@
 import {
   boolean,
-  date,
   index,
   integer,
   pgTable,
@@ -9,8 +8,6 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import z, { object, string } from "zod";
-import escapeHtml from 'escape-html';
 
 /**
  * @openapi
