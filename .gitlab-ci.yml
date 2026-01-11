@@ -1,0 +1,12 @@
+include:
+  - local: '.ci/base.yml'
+  - local: '.ci/prepare.yml'
+  - local: '.ci/sast_scan.yml'
+  - local: '.ci/test.yml'
+  - local: '.ci/build.yml'
+  - local: '.ci/security.yml'
+  - local: '.ci/dast_scan.yml'
+  - local: '.ci/deploy.yml'
+  - local: '.ci/release.yml'
+  - local: '.ci/notify.yml'
+  - local: '.ci/clean_up.yml'

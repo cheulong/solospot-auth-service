@@ -1,0 +1,35 @@
+
+# -------- Build stage --------
+FROM oven/bun:1-slim AS build
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY package.json bun.lock ./
+
+# Install production dependencies only
+RUN bun install --production --frozen-lockfile
+
+# Copy source and build
+COPY src ./src
+RUN bun run build
+
+# -------- Runtime stage --------
+FROM oven/bun:1-slim AS production
+
+WORKDIR /app
+
+# Copy only required artifacts
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+
+
+# run the app
+USER bun
+EXPOSE 5000/tcp
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD bun -e "fetch('http://localhost:5000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
+ENTRYPOINT [ "bun", "run", "start" ]

@@ -7,9 +7,9 @@ const options: swaggerJSDoc.Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Place Service API",
+      title: "Authenticate Service API",
       version,
-      description: "API documentation for Place Service",
+      description: "API documentation for Authenticate Service",
     },
     components: {
       securitySchemes: {
